@@ -28,8 +28,8 @@ void *barber_thread(void *arg)
         waiting--;
         sem_post(&mutex);
 
-        sem_post(&barber);
         printf("Парикмахер стрижёт клиента...\n");
+        sem_post(&barber);
         sleep(5); 
         printf("Парикмахер закончил стрижку\n");
     }
@@ -50,7 +50,7 @@ void *customer_thread(void *arg)
         sem_post(&mutex);
 
         sem_wait(&barber);
-        printf("Клиент %ld постригся\n", id);
+        printf("Клиент %ld сел в кресло\n", id);
     } else {
         sem_post(&mutex);
         printf("Клиенту %ld не хватило места — он ушел\n", id);
@@ -103,4 +103,6 @@ int main(void) {
     sem_destroy(&mutex);
     sem_destroy(&customers);
     sem_destroy(&barber);
+
+    return 0;
 }
