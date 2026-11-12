@@ -32,3 +32,52 @@ static FILE *openCsvAppend(void)
     }
     return csv;
 }
+
+void testLoadInternalFragmentation(void)
+{
+    printf("Running testLoadInternalFragmentation...\n");
+
+    FILE *csv = openCsvAppend();
+    if (!csv)
+    {
+        return;
+    }
+
+    unsigned int pageSize = 4096; /* 4 KiB */
+    unsigned int totalMemory = 64 * 1024 * 1024; /* 64 MiB */
+
+    /* Проверяем разные размеры запросов: от 1 байта до 16 КБ с шагом 127 байт */
+    for (unsigned int reqSize = 1; reqSize <= 16384; reqSize += 127)
+    {
+        memoryManager mm;
+        initMemoryManager(&mm, pageSize, totalMemory);
+
+        double t1 = getTimeUs();
+        int res = allocateMemory(&mm, reqSize);
+        double t2 = getTimeUs();
+
+        if (res == SUCCESS)
+        {
+            /* Вычисляем реальный выделенный объем и потери (внутреннюю фрагментацию) */
+            unsigned int actualAllocated = totalMemory - mm._freeMemory;
+            unsigned int wasted = (actualAllocated > reqSize)
+                                  ? (actualAllocated - reqSize) : 0;
+
+            double t3 = getTimeUs();
+            freeMemoryBlock(&mm);
+            double t4 = getTimeUs();
+
+            fprintf(csv, "fragmentation,%u,%u,%.3f,%.3f,0.0,%u\n",
+                    reqSize, pageSize, t2 - t1, t4 - t3, wasted);
+        }
+        else
+        {
+            freeMemoryBlock(&mm);
+        }
+
+        freeMemoryManager(&mm);
+    }
+
+    fclose(csv);
+    printf("testLoadInternalFragmentation PASSED! (saved to %s)\n\n", RESULTS_FILE);
+}
